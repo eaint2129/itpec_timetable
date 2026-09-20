@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#3a2720">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Study Schedule">
   <meta name="description" content="A flexible 51-day study schedule that moves forward when dates are skipped.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%233a2720'/%3E%3Cpath d='M18 19h28v6H18zm0 10h28v6H18zm0 10h18v6H18z' fill='%23f7f1e8'/%3E%3C/svg%3E">
   <title>Study Schedule</title>
   <style>
     :root {
@@ -1579,6 +1581,7 @@
 
     function friendlyAuthError(error) {
       const message = String(error?.message || "").toLowerCase();
+      if (error?.code === "AUTH_TIMEOUT") return "Sign in timed out. Check whether your network can reach Supabase, then try again.";
       if (message.includes("invalid login credentials")) return "The email or password is incorrect.";
       if (message.includes("email not confirmed")) return "Please confirm your email before signing in.";
       if (message.includes("rate limit")) return "Too many attempts. Please wait a moment and try again.";
@@ -1586,8 +1589,23 @@
       return "We could not complete that request. Please try again.";
     }
 
+    function withTimeout(promise, milliseconds) {
+      let timeoutId;
+      const timeout = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+          const error = new Error("Authentication request timed out.");
+          error.code = "AUTH_TIMEOUT";
+          reject(error);
+        }, milliseconds);
+      });
+      return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+    }
+
     async function signIn(email, password) {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await withTimeout(
+        supabaseClient.auth.signInWithPassword({ email, password }),
+        15000
+      );
       if (error) throw error;
       return data;
     }
@@ -1905,7 +1923,7 @@
       const password = elements.authPassword.value;
       elements.authSubmit.disabled = true;
       elements.authSubmit.textContent = "Signing In...";
-      setAuthMessage("");
+      setAuthMessage("Connecting securely to Supabase...");
       try {
         await signIn(email, password);
       } catch (error) {
