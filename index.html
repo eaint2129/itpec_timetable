@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3a2720">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Study Schedule">
+  <meta name="description" content="A flexible 51-day study schedule that moves forward when dates are skipped.">
+  <title>Study Schedule</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --green-950: #2b1d18;
+      --green-900: #3a2720;
+      --green-800: #51372d;
+      --green-700: #6b4938;
+      --green-600: #8a624b;
+      --green-200: #dcc7b7;
+      --green-100: #eee2d7;
+      --green-50: #f8f2ec;
+      --cream: #f7f1e8;
+      --white: #ffffff;
+      --ink: #30241f;
+      --muted: #75665e;
+      --line: #e5d8ce;
+      --shadow: 0 14px 34px rgba(58, 39, 32, 0.09);
+      --shadow-soft: 0 5px 18px rgba(58, 39, 32, 0.08);
+      --radius-lg: 22px;
+      --radius-md: 15px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    [hidden] { display: none !important; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% -10%, rgba(220, 199, 183, 0.75), transparent 27rem),
+        var(--cream);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font: inherit; }
+
+    input { font: inherit; }
+
+    button:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid rgba(138, 98, 75, 0.35);
+      outline-offset: 2px;
+    }
+
+    .app-header {
+      background: var(--green-900);
+      color: var(--white);
+      padding: max(24px, env(safe-area-inset-top)) 20px 70px;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .sync-status {
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #eadfd7;
+      font-size: 0.76rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #b8a399;
+    }
+
+    .sync-status[data-status="synced"] .sync-dot { background: #d5ad8e; }
+    .sync-status[data-status="syncing"] .sync-dot { background: #dac8ba; animation: pulse 1.1s ease-in-out infinite; }
+    .sync-status[data-status="offline"] .sync-dot { background: #b8aca5; }
+    .sync-status[data-status="error"] .sync-dot { background: #b9a78f; }
+
+    @keyframes pulse {
+      50% { opacity: 0.35; transform: scale(0.8); }
+    }
+
+    .loading-screen,
+    .auth-screen {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .loading-screen {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--cream);
+      color: var(--green-900);
+      text-align: center;
+    }
+
+    .loading-mark {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 16px;
+      border: 4px solid var(--green-200);
+      border-top-color: var(--green-700);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-screen p { margin: 0; font-weight: 700; }
+
+    .auth-screen {
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 20% 0%, rgba(220, 199, 183, 0.8), transparent 28rem),
+        var(--cream);
+    }
+
+    .auth-shell { width: min(430px, 100%); }
+
+    .auth-brand {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .auth-brand h1 {
+      color: var(--green-950);
+      font-size: clamp(2rem, 7vw, 2.7rem);
+    }
+
+    .auth-brand p:last-child {
+      margin: 9px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .auth-card { padding: 24px; }
+
+    .auth-title {
+      margin: 0;
+      color: var(--green-950);
+      font-size: 1.35rem;
+      letter-spacing: -0.025em;
+    }
+
+    .auth-intro {
+      margin: 6px 0 21px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .auth-form { display: grid; gap: 15px; }
+
+    .field { display: grid; gap: 7px; }
+
+    .field label {
+      color: var(--ink);
+      font-size: 0.8rem;
+      font-weight: 750;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #d9c9bd;
+      border-radius: 11px;
+      background: var(--white);
+      color: var(--ink);
+    }
+
+    .field input:focus {
+      border-color: var(--green-600);
+      outline: 3px solid rgba(138, 98, 75, 0.13);
+    }
+
+    .auth-submit { margin-top: 3px; }
+
+    .auth-message {
+      min-height: 22px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .auth-message.error { color: #655f50; }
+
+    .header-inner,
+    .app-main {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: #d9c4b5;
+      font-size: 0.76rem;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.08;
+      letter-spacing: -0.045em;
+    }
+
+    .header-copy {
+      max-width: 640px;
+      margin: 11px 0 0;
+      color: #eadfd7;
+      font-size: 0.96rem;
+      line-height: 1.6;
+    }
+
+    .app-main {
+      margin-top: -42px;
+      padding: 0 20px calc(50px + env(safe-area-inset-bottom));
+    }
+
+    .card {
+      border: 1px solid rgba(229, 216, 206, 0.9);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow);
+    }
+
+    .dashboard { padding: 24px; }
+
+    .progress-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .section-label {
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .progress-copy {
+      margin: 0;
+      font-size: clamp(1.25rem, 3vw, 1.75rem);
+      font-weight: 760;
+      letter-spacing: -0.025em;
+    }
+
+    .progress-percent {
+      color: var(--green-700);
+      font-size: 0.95rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .progress-track {
+      height: 10px;
+      margin-top: 16px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--green-100);
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green-700), #ad8061);
+      transition: width 300ms ease;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .summary-item {
+      min-height: 88px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--green-50);
+    }
+
+    .summary-item span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.3;
+    }
+
+    .summary-item strong {
+      display: block;
+      color: var(--green-950);
+      font-size: 1.18rem;
+      line-height: 1.25;
+    }
+
+    .summary-item.finish strong { font-size: 0.98rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 22px;
+      align-items: start;
+      margin-top: 22px;
+    }
+
+    .calendar-card { padding: 22px; }
+
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .calendar-toolbar h2 {
+      min-width: 190px;
+      margin: 0;
+      text-align: center;
+      font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+      letter-spacing: -0.025em;
+    }
+
+    .toolbar-group { display: flex; gap: 8px; }
+
+    .btn {
+      min-height: 44px;
+      padding: 10px 15px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: var(--green-800);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: var(--green-900); }
+
+    .btn-secondary {
+      border-color: var(--line);
+      background: var(--white);
+      color: var(--green-900);
+    }
+
+    .btn-secondary:hover { background: var(--green-50); }
+
+    .icon-btn {
+      width: 44px;
+      min-width: 44px;
+      padding: 0;
+      font-size: 1.2rem;
+    }
+
+    .weekdays,
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .weekday {
+      padding: 5px 2px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .date-card {
+      position: relative;
+      min-width: 0;
+      min-height: 126px;
+      padding: 11px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--white);
+      color: var(--ink);
+      text-align: left;
+    }
+
+    button.date-card {
+      cursor: pointer;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+
+    button.date-card:hover {
+      z-index: 1;
+      border-color: var(--green-600);
+      box-shadow: var(--shadow-soft);
+      transform: translateY(-2px);
+    }
+
+    .date-card.outside-month {
+      background: #fcfaf7;
+      color: #aa9d94;
+    }
+
+    .date-card.study-date { border-color: #decbbb; }
+
+    .date-card.completed {
+      border-color: #b68b6c;
+      background: #f5ece4;
+    }
+
+    .date-card.skipped {
+      border-style: dashed;
+      border-color: #b9afa8;
+      background: #f3f0ed;
+      color: #746b65;
+    }
+
+    .date-card.today { box-shadow: inset 0 0 0 2px var(--green-700); }
+
+    .date-top {
+      display: flex;
+      min-height: 23px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .date-number {
+      font-size: 0.79rem;
+      font-weight: 750;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+    }
+
+    .today-tag {
+      padding: 3px 6px;
+      border-radius: 999px;
+      background: var(--green-800);
+      color: var(--white);
+      font-size: 0.54rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .day-number {
+      margin-top: 10px;
+      color: var(--green-800);
+      font-size: 0.86rem;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .chapter-meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+
+    .chapter-meta span { display: block; }
+
+    .status-check {
+      position: absolute;
+      right: 9px;
+      bottom: 8px;
+      display: grid;
+      width: 23px;
+      height: 23px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--green-700);
+      color: white;
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .skipped-label {
+      margin-top: 13px;
+      color: #706761;
+      font-size: 0.73rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+    }
+
+    .sidebar { display: grid; gap: 22px; }
+
+    .side-card { padding: 20px; }
+
+    .side-card h2 {
+      margin: 0 0 5px;
+      font-size: 1.06rem;
+      letter-spacing: -0.015em;
+    }
+
+    .side-intro {
+      margin: 0 0 17px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    .volume-block + .volume-block { margin-top: 20px; }
+
+    .volume-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .volume-total { color: var(--green-700); font-size: 0.75rem; }
+
+    .chapter-row + .chapter-row { margin-top: 11px; }
+
+    .chapter-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.77rem;
+    }
+
+    .chapter-line strong { color: var(--ink); font-weight: 700; }
+
+    .mini-track {
+      height: 5px;
+      margin-top: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--green-100);
+    }
+
+    .mini-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green-600);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .settings-stack { display: grid; gap: 18px; }
+
+    .settings-section + .settings-section {
+      padding-top: 17px;
+      border-top: 1px solid var(--line);
+    }
+
+    .settings-title {
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-size: 0.8rem;
+      font-weight: 780;
+    }
+
+    .account-email {
+      margin: 2px 0 12px;
+      overflow-wrap: anywhere;
+      color: var(--green-800);
+      font-size: 0.83rem;
+      font-weight: 700;
+    }
+
+    .start-date-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .start-date-input {
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px solid #d9c9bd;
+      border-radius: 11px;
+      color: var(--ink);
+      background: var(--white);
+    }
+
+    .settings-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .settings-copy {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .reset-btn { white-space: nowrap; }
+
+    .empty-date-text {
+      margin-top: 12px;
+      color: #aaa09a;
+      font-size: 0.66rem;
+      line-height: 1.35;
+    }
+
+    .dialog {
+      width: min(420px, calc(100% - 32px));
+      padding: 0;
+      overflow: hidden;
+      border: 0;
+      border-radius: 22px;
+      background: var(--white);
+      color: var(--ink);
+      box-shadow: 0 25px 80px rgba(43, 29, 24, 0.28);
+    }
+
+    .dialog::backdrop {
+      background: rgba(43, 29, 24, 0.48);
+      backdrop-filter: blur(3px);
+    }
+
+    .dialog-inner { padding: 25px; }
+
+    .dialog-date {
+      margin: 0 0 5px;
+      color: var(--green-700);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dialog h2 {
+      margin: 0;
+      font-size: 1.55rem;
+      letter-spacing: -0.03em;
+    }
+
+    .dialog-details {
+      margin: 9px 0 20px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .dialog-actions { display: grid; gap: 9px; }
+
+    .dialog-actions .btn { width: 100%; }
+
+    .btn-quiet {
+      background: var(--green-100);
+      color: var(--green-900);
+    }
+
+    .btn-quiet:hover { background: var(--green-200); }
+
+    .btn-skip {
+      border-color: #d8ccc4;
+      background: #f3f0ed;
+      color: #5b4d45;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn[hidden] { display: none; }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      max-width: calc(100% - 32px);
+      padding: 12px 17px;
+      border-radius: 12px;
+      background: var(--green-950);
+      color: var(--white);
+      box-shadow: var(--shadow);
+      font-size: 0.86rem;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 12px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 940px) {
+      .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); }
+    }
+
+    @media (max-width: 680px) {
+      .app-header { padding-inline: 16px; padding-bottom: 62px; }
+      .app-main { padding-inline: 12px; }
+      .dashboard, .calendar-card, .side-card { padding: 16px; }
+      .header-top { align-items: center; }
+      .sync-status { min-height: 30px; padding-inline: 9px; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary-item { min-height: 78px; padding: 12px; }
+      .summary-item:last-child { grid-column: 1 / -1; }
+      .calendar-toolbar { align-items: stretch; flex-wrap: wrap; }
+      .calendar-toolbar h2 { order: -1; width: 100%; }
+      .toolbar-group:first-of-type { flex: 1; justify-content: flex-start; }
+      .weekdays, .calendar-grid { gap: 4px; }
+      .date-card { min-height: 92px; padding: 7px 5px; border-radius: 10px; }
+      .date-number { font-size: 0.7rem; }
+      .date-month { display: none; }
+      .today-tag { width: 6px; height: 6px; padding: 0; overflow: hidden; color: transparent; }
+      .day-number { margin-top: 7px; font-size: 0.65rem; letter-spacing: 0; }
+      .chapter-meta { margin-top: 4px; font-size: 0.58rem; line-height: 1.35; }
+      .status-check { right: 5px; bottom: 5px; width: 17px; height: 17px; font-size: 0.58rem; }
+      .skipped-label { margin-top: 10px; font-size: 0.57rem; letter-spacing: 0.03em; }
+      .empty-date-text { display: none; }
+      .sidebar { grid-template-columns: 1fr; }
+      .dialog {
+        width: 100%;
+        max-width: none;
+        margin: auto 0 0;
+        border-radius: 22px 22px 0 0;
+      }
+      .dialog-inner { padding: 25px 20px calc(20px + env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-width: 390px) {
+      .dashboard { padding: 14px; }
+      .progress-row { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .calendar-card { padding-inline: 8px; }
+      .date-card { min-height: 84px; }
+      .chapter-meta span:first-child { display: none; }
+      .btn { padding-inline: 12px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <section class="loading-screen" id="loadingScreen" aria-live="polite">
+    <div>
+      <div class="loading-mark" aria-hidden="true"></div>
+      <p>Loading your study schedule...</p>
+    </div>
+  </section>
+
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-shell">
+      <div class="auth-brand">
+        <p class="eyebrow">Private cloud progress</p>
+        <h1>Study Schedule</h1>
+        <p>Sign in to keep your 51-day plan in sync across devices.</p>
+      </div>
+      <div class="card auth-card">
+        <h2 class="auth-title">Sign In</h2>
+        <p class="auth-intro">Use your existing private account to open your schedule.</p>
+        <form class="auth-form" id="authForm">
+          <div class="field">
+            <label for="authEmail">Email</label>
+            <input id="authEmail" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label for="authPassword">Password</label>
+            <input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters">
+          </div>
+          <button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Sign In</button>
+        </form>
+        <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <header class="app-header" id="appHeader" hidden>
+    <div class="header-inner">
+      <div class="header-top">
+        <div>
+          <p class="eyebrow">51-day learning plan</p>
+          <h1>Study Schedule</h1>
+        </div>
+        <div class="sync-status" id="syncStatus" data-status="syncing" role="status" aria-live="polite">
+          <span class="sync-dot" aria-hidden="true"></span>
+          <span id="syncStatusText">Syncing...</span>
+        </div>
+      </div>
+      <p class="header-copy">Keep your study-day sequence intact, even when life shifts the calendar.</p>
+    </div>
+  </header>
+
+  <main class="app-main" id="appMain" hidden>
+    <section class="card dashboard" aria-labelledby="progress-heading">
+      <div class="progress-row">
+        <div>
+          <p class="section-label" id="progress-heading">Current Progress</p>
+          <p class="progress-copy" id="progressCopy">0 / 51 Days Completed</p>
+        </div>
+        <span class="progress-percent" id="progressPercent">0%</span>
+      </div>
+      <div class="progress-track" role="progressbar" aria-label="Study progress" aria-valuemin="0" aria-valuemax="51" aria-valuenow="0" id="progressTrack">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </section>
+
+    <div class="layout">
+      <section class="card calendar-card" aria-labelledby="calendarTitle">
+        <div class="calendar-toolbar">
+          <div class="toolbar-group">
+            <button class="btn btn-secondary icon-btn" type="button" id="previousMonth" aria-label="Previous month">‹</button>
+            <button class="btn btn-secondary icon-btn" type="button" id="nextMonth" aria-label="Next month">›</button>
+          </div>
+          <h2 id="calendarTitle" aria-live="polite"></h2>
+          <div class="toolbar-group">
+            <button class="btn btn-secondary" type="button" id="goToToday">Go to Today</button>
+          </div>
+        </div>
+        <div class="weekdays" aria-hidden="true">
+          <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div>
+          <div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="Study schedule calendar"></div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="card side-card" aria-labelledby="chaptersHeading">
+          <h2 id="chaptersHeading">Chapter Progress</h2>
+          <p class="side-intro">Updates automatically when study days are completed.</p>
+          <div id="chapterProgress"></div>
+        </section>
+
+        <section class="card side-card" aria-labelledby="settingsHeading">
+          <h2 id="settingsHeading">Settings</h2>
+          <div class="settings-stack">
+            <div class="settings-section">
+              <p class="settings-title">Schedule start date</p>
+              <form class="start-date-form" id="startDateForm">
+                <label class="sr-only" for="startDateInput">Schedule start date</label>
+                <input class="start-date-input" id="startDateInput" type="date" required>
+                <button class="btn btn-secondary" type="submit">Update</button>
+              </form>
+            </div>
+            <div class="settings-section">
+              <p class="settings-copy">Signed in as:</p>
+              <p class="account-email" id="accountEmail"></p>
+              <div class="settings-actions">
+                <button class="btn btn-secondary" type="button" id="signOutButton">Sign Out</button>
+                <button class="btn btn-secondary reset-btn" type="button" id="resetSchedule">Reset Schedule</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <dialog class="dialog" id="dateDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-inner">
+      <p class="dialog-date" id="dialogDate"></p>
+      <h2 id="dialogTitle"></h2>
+      <p class="dialog-details" id="dialogDetails"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-primary" type="button" id="completeAction">✓ Mark Completed</button>
+        <button class="btn btn-skip" type="button" id="skipAction">⏭ Skip This Date</button>
+        <button class="btn btn-quiet" type="button" id="undoAction">↩ Undo</button>
+        <button class="btn btn-cancel" type="button" id="cancelAction">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    "use strict";
+
+    // Supabase publishable keys are intended for browser use and are protected by RLS.
+    // NEVER paste a service_role or secret key into this file.
+    const SUPABASE_URL = "https://xihfpbnlurchltdsbsta.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JADTUgwkbMiU62_8hzK4Jg_ChGK3N_6";
+
+    // This is the default for new accounts. Each signed-in user can change it in Settings.
+    const START_DATE = "2026-09-13";
+    const TOTAL_STUDY_DAYS = 51;
+    const TABLE_NAME = "study_schedule_state";
+    const REFRESH_GUARD_MS = 20000;
+    const STORAGE_KEYS = {
+      skippedDates: "study_schedule_skipped_dates",
+      completedDays: "study_schedule_completed_days",
+      startDate: "study_schedule_start_date",
+      updatedAt: "study_schedule_local_updated_at",
+      pendingSync: "study_schedule_pending_sync"
+    };
+
+    const STUDY_PLAN = [
+      {
+        volume: 1,
+        chapters: [
+          { chapter: 1, lecture: 1800, requiredDays: 10 },
+          { chapter: 2, lecture: 1030, requiredDays: 6 },
+          { chapter: 3, lecture: 590, requiredDays: 4 },
+          { chapter: 4, lecture: 260, requiredDays: 2 },
+          { chapter: 5, lecture: 540, requiredDays: 3 },
+          { chapter: 6, lecture: 570, requiredDays: 4 }
+        ]
+      },
+      {
+        volume: 2,
+        chapters: [
+          { chapter: 1, lecture: 1260, requiredDays: 7 },
+          { chapter: 2, lecture: 560, requiredDays: 4 },
+          { chapter: 3, lecture: 210, requiredDays: 2 },
+          { chapter: 4, lecture: 120, requiredDays: 1 },
+          { chapter: 5, lecture: 690, requiredDays: 4 },
+          { chapter: 6, lecture: 610, requiredDays: 3 },
+          { chapter: 7, lecture: 124, requiredDays: 1 }
+        ]
+      }
+    ];
+
+    let currentStartDate = START_DATE;
+    let skippedDates = [];
+    let completedDays = [];
+    let studyDays = [];
+    let schedule = [];
+    let scheduleByDate = new Map();
+    let selectedDateKey = null;
+    let toastTimer = null;
+    let supabaseClient = null;
+    let currentUser = null;
+    let pendingSync = false;
+    let localUpdatedAt = null;
+    let lastKnownCloudUpdatedAt = null;
+    let lastCloudRefreshAt = 0;
+    let cloudHydrated = false;
+    let cloudLoadPromise = null;
+    let syncPromise = null;
+    let syncRequested = false;
+    let stateRevision = 0;
+    let authGeneration = 0;
+    let activationPromise = null;
+
+    const today = stripTime(new Date());
+    let visibleMonth = new Date(parseLocalDate(START_DATE).getFullYear(), parseLocalDate(START_DATE).getMonth(), 1, 12);
+
+    const elements = {
+      loadingScreen: document.getElementById("loadingScreen"),
+      authScreen: document.getElementById("authScreen"),
+      appHeader: document.getElementById("appHeader"),
+      appMain: document.getElementById("appMain"),
+      authForm: document.getElementById("authForm"),
+      authEmail: document.getElementById("authEmail"),
+      authPassword: document.getElementById("authPassword"),
+      authSubmit: document.getElementById("authSubmit"),
+      authMessage: document.getElementById("authMessage"),
+      syncStatus: document.getElementById("syncStatus"),
+      syncStatusText: document.getElementById("syncStatusText"),
+      progressCopy: document.getElementById("progressCopy"),
+      progressPercent: document.getElementById("progressPercent"),
+      progressTrack: document.getElementById("progressTrack"),
+      progressFill: document.getElementById("progressFill"),
+      summaryGrid: document.getElementById("summaryGrid"),
+      calendarTitle: document.getElementById("calendarTitle"),
+      calendarGrid: document.getElementById("calendarGrid"),
+      chapterProgress: document.getElementById("chapterProgress"),
+      dateDialog: document.getElementById("dateDialog"),
+      dialogDate: document.getElementById("dialogDate"),
+      dialogTitle: document.getElementById("dialogTitle"),
+      dialogDetails: document.getElementById("dialogDetails"),
+      completeAction: document.getElementById("completeAction"),
+      skipAction: document.getElementById("skipAction"),
+      undoAction: document.getElementById("undoAction"),
+      accountEmail: document.getElementById("accountEmail"),
+      startDateForm: document.getElementById("startDateForm"),
+      startDateInput: document.getElementById("startDateInput"),
+      toast: document.getElementById("toast")
+    };
+
+    function parseLocalDate(dateKey) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+      if (!match) throw new Error(`Invalid local date: ${dateKey}`);
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+    }
+
+    function stripTime(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+    }
+
+    function toDateKey(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function addDays(date, amount) {
+      const result = stripTime(date);
+      result.setDate(result.getDate() + amount);
+      return result;
+    }
+
+    function isValidDateKey(value) {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      try {
+        return toDateKey(parseLocalDate(value)) === value;
+      } catch {
+        return false;
+      }
+    }
+
+    function isValidTimestamp(value) {
+      return typeof value === "string" && Number.isFinite(Date.parse(value));
+    }
+
+    function normalizeCompletedDays(values) {
+      if (!Array.isArray(values)) return [];
+      return [...new Set(values.map(Number).filter((id) => Number.isInteger(id) && id >= 1 && id <= TOTAL_STUDY_DAYS))]
+        .sort((a, b) => a - b);
+    }
+
+    function filterApplicableSkippedDates(values, startKey = currentStartDate) {
+      if (!Array.isArray(values) || !isValidDateKey(startKey)) return [];
+      const start = parseLocalDate(startKey);
+      const candidates = new Set(values.filter(isValidDateKey).filter((key) => parseLocalDate(key) >= start));
+      const applicable = [];
+      let cursor = start;
+      let assignedDays = 0;
+
+      while (assignedDays < TOTAL_STUDY_DAYS) {
+        const key = toDateKey(cursor);
+        if (candidates.has(key)) applicable.push(key);
+        else assignedDays += 1;
+        cursor = addDays(cursor, 1);
+      }
+      return applicable.sort();
+    }
+
+    function generateStudyDays() {
+      const generated = [];
+      let dayId = 1;
+
+      STUDY_PLAN.forEach((volume) => {
+        volume.chapters.forEach((chapter) => {
+          for (let chapterDay = 1; chapterDay <= chapter.requiredDays; chapterDay += 1) {
+            generated.push({
+              id: dayId,
+              volume: volume.volume,
+              chapter: chapter.chapter,
+              chapterDay,
+              chapterTotal: chapter.requiredDays,
+              lecture: chapter.lecture
+            });
+            dayId += 1;
+          }
+        });
+      });
+
+      if (generated.length !== TOTAL_STUDY_DAYS) {
+        throw new Error(`Study plan must contain exactly ${TOTAL_STUDY_DAYS} days.`);
+      }
+      return generated;
+    }
+
+    function isSkippedDate(dateOrKey) {
+      const key = typeof dateOrKey === "string" ? dateOrKey : toDateKey(dateOrKey);
+      return skippedDates.includes(key);
+    }
+
+    function generateSchedule() {
+      const generated = [];
+      const skippedSet = new Set(skippedDates);
+      let cursor = parseLocalDate(currentStartDate);
+      let studyIndex = 0;
+
+      while (studyIndex < studyDays.length) {
+        const dateKey = toDateKey(cursor);
+        if (skippedSet.has(dateKey)) {
+          generated.push({ date: stripTime(cursor), dateKey, status: "skipped", studyDay: null });
+        } else {
+          generated.push({
+            date: stripTime(cursor),
+            dateKey,
+            status: "study",
+            studyDay: studyDays[studyIndex]
+          });
+          studyIndex += 1;
+        }
+        cursor = addDays(cursor, 1);
+      }
+
+      schedule = generated;
+      scheduleByDate = new Map(generated.map((entry) => [entry.dateKey, entry]));
+      return generated;
+    }
+
+    function calculateProgress() {
+      const completedSet = new Set(completedDays);
+      const completed = studyDays.reduce((count, day) => count + (completedSet.has(day.id) ? 1 : 0), 0);
+      return {
+        completed,
+        remaining: TOTAL_STUDY_DAYS - completed,
+        percent: Math.round((completed / TOTAL_STUDY_DAYS) * 100)
+      };
+    }
+
+    function calculateFinishDate() {
+      return schedule.length ? schedule[schedule.length - 1].date : parseLocalDate(currentStartDate);
+    }
+
+    function scopedStorageKey(baseKey, userId = currentUser?.id) {
+      return userId ? `${baseKey}:${userId}` : baseKey;
+    }
+
+    function safeStorageGet(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn("Local cache could not be read.", error);
+        return null;
+      }
+    }
+
+    function parseStoredArray(rawValue) {
+      try {
+        const parsed = JSON.parse(rawValue || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveState({ touch = false, markPending = false } = {}) {
+      if (!currentUser) return;
+      if (touch) {
+        localUpdatedAt = new Date().toISOString();
+        stateRevision += 1;
+      }
+      if (markPending) pendingSync = true;
+
+      try {
+        localStorage.setItem(scopedStorageKey(STORAGE_KEYS.skippedDates), JSON.stringify(skippedDates));
+        localStorage.setItem(scopedStorageKey(STORAGE_KEYS.completedDays), JSON.stringify(completedDays));
+        localStorage.setItem(scopedStorageKey(STORAGE_KEYS.startDate), currentStartDate);
+        localStorage.setItem(scopedStorageKey(STORAGE_KEYS.updatedAt), localUpdatedAt || "");
+        localStorage.setItem(scopedStorageKey(STORAGE_KEYS.pendingSync), JSON.stringify(pendingSync));
+      } catch (error) {
+        console.warn("Study schedule state could not be saved locally.", error);
+        showToast("This browser could not save an offline copy.");
+      }
+    }
+
+    function loadState(userId) {
+      const scopedStart = safeStorageGet(scopedStorageKey(STORAGE_KEYS.startDate, userId));
+      const hasScopedCache = scopedStart !== null;
+      let migratedLegacyCache = false;
+
+      let startRaw = scopedStart;
+      let skippedRaw = safeStorageGet(scopedStorageKey(STORAGE_KEYS.skippedDates, userId));
+      let completedRaw = safeStorageGet(scopedStorageKey(STORAGE_KEYS.completedDays, userId));
+      let updatedRaw = safeStorageGet(scopedStorageKey(STORAGE_KEYS.updatedAt, userId));
+      let pendingRaw = safeStorageGet(scopedStorageKey(STORAGE_KEYS.pendingSync, userId));
+
+      // One-time migration from the original single-device version.
+      if (!hasScopedCache) {
+        const legacySkipped = safeStorageGet(STORAGE_KEYS.skippedDates);
+        const legacyCompleted = safeStorageGet(STORAGE_KEYS.completedDays);
+        const legacyStart = safeStorageGet(STORAGE_KEYS.startDate);
+        if (legacySkipped !== null || legacyCompleted !== null || legacyStart !== null) {
+          skippedRaw = legacySkipped;
+          completedRaw = legacyCompleted;
+          startRaw = legacyStart || START_DATE;
+          updatedRaw = new Date().toISOString();
+          pendingRaw = "true";
+          migratedLegacyCache = true;
+        }
+      }
+
+      currentStartDate = isValidDateKey(startRaw) ? startRaw : START_DATE;
+      skippedDates = filterApplicableSkippedDates(parseStoredArray(skippedRaw), currentStartDate);
+      completedDays = normalizeCompletedDays(parseStoredArray(completedRaw));
+      localUpdatedAt = isValidTimestamp(updatedRaw) ? updatedRaw : null;
+      pendingSync = pendingRaw === "true";
+      stateRevision += 1;
+
+      if (migratedLegacyCache) {
+        saveState();
+        try {
+          Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+        } catch (error) {
+          console.warn("Legacy cache cleanup failed.", error);
+        }
+      }
+    }
+
+    function skipDate(dateKey) {
+      const entry = scheduleByDate.get(dateKey);
+      if (!entry || entry.status !== "study") return;
+      if (!window.confirm(`Skip ${formatShortDate(entry.date)}? Remaining study days will move forward.`)) return;
+
+      skippedDates = [...new Set([...skippedDates, dateKey])].sort();
+      regenerateAndRender();
+      persistLocalChange();
+      closeDialog();
+      showToast(`${formatShortDate(entry.date)} skipped. The schedule was extended.`);
+    }
+
+    function undoSkip(dateKey) {
+      if (!isSkippedDate(dateKey)) return;
+      const date = parseLocalDate(dateKey);
+      skippedDates = skippedDates.filter((value) => value !== dateKey);
+      regenerateAndRender();
+      persistLocalChange();
+      closeDialog();
+      showToast(`${formatShortDate(date)} restored. Study days shifted back.`);
+    }
+
+    function toggleCompleted(dayId) {
+      if (!Number.isInteger(dayId)) return;
+      if (completedDays.includes(dayId)) {
+        completedDays = completedDays.filter((id) => id !== dayId);
+        showToast(`Day ${dayId} marked incomplete.`);
+      } else {
+        completedDays = [...completedDays, dayId].sort((a, b) => a - b);
+        showToast(`Day ${dayId} completed.`);
+      }
+      renderAll();
+      persistLocalChange();
+      closeDialog();
+    }
+
+    function persistLocalChange() {
+      saveState({ touch: true, markPending: true });
+      if (navigator.onLine) syncCloudState();
+      else setSyncStatus("offline");
+    }
+
+    function formatShortDate(date) {
+      return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+    }
+
+    function formatLongDate(date) {
+      return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(date);
+    }
+
+    function renderSummary() {
+      const progress = calculateProgress();
+      const finishDate = calculateFinishDate();
+      elements.progressCopy.textContent = `${progress.completed} / ${TOTAL_STUDY_DAYS} Days Completed`;
+      elements.progressPercent.textContent = `${progress.percent}%`;
+      elements.progressFill.style.width = `${progress.percent}%`;
+      elements.progressTrack.setAttribute("aria-valuenow", String(progress.completed));
+
+      const items = [
+        ["Total Study Days", TOTAL_STUDY_DAYS],
+        ["Completed", progress.completed],
+        ["Remaining", progress.remaining],
+        ["Skipped Dates", skippedDates.length],
+        ["Estimated Finish Date", formatLongDate(finishDate), "finish"]
+      ];
+
+      elements.summaryGrid.innerHTML = items.map(([label, value, className = ""]) => `
+        <div class="summary-item ${className}">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderCalendar() {
+      const year = visibleMonth.getFullYear();
+      const month = visibleMonth.getMonth();
+      elements.calendarTitle.textContent = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(visibleMonth);
+
+      const firstOfMonth = new Date(year, month, 1, 12);
+      const gridStart = addDays(firstOfMonth, -firstOfMonth.getDay());
+      const lastOfMonth = new Date(year, month + 1, 0, 12);
+      const gridEndOffset = 6 - lastOfMonth.getDay();
+      // Calendar arithmetic avoids millisecond division, which can be wrong across DST changes.
+      const totalCells = Math.max(35, firstOfMonth.getDay() + lastOfMonth.getDate() + gridEndOffset);
+      const completedSet = new Set(completedDays);
+      const todayKey = toDateKey(today);
+      const fragment = document.createDocumentFragment();
+
+      for (let index = 0; index < totalCells; index += 1) {
+        const date = addDays(gridStart, index);
+        const dateKey = toDateKey(date);
+        const entry = scheduleByDate.get(dateKey);
+        const isCurrentMonth = date.getMonth() === month;
+        const isToday = dateKey === todayKey;
+        const isCompleted = entry?.studyDay && completedSet.has(entry.studyDay.id);
+        const interactive = Boolean(entry);
+        const cell = document.createElement(interactive ? "button" : "div");
+
+        if (interactive) cell.type = "button";
+        cell.className = [
+          "date-card",
+          !isCurrentMonth ? "outside-month" : "",
+          entry?.status === "study" ? "study-date" : "",
+          entry?.status === "skipped" ? "skipped" : "",
+          isCompleted ? "completed" : "",
+          isToday ? "today" : ""
+        ].filter(Boolean).join(" ");
+        cell.setAttribute("role", "gridcell");
+        cell.dataset.date = dateKey;
+
+        let detailMarkup = '<div class="empty-date-text">No study scheduled</div>';
+        let accessibleStatus = "No study scheduled";
+
+        if (entry?.status === "skipped") {
+          detailMarkup = '<div class="skipped-label">SKIPPED</div>';
+          accessibleStatus = "Skipped";
+        } else if (entry?.studyDay) {
+          detailMarkup = `
+            <div class="day-number">Day ${entry.studyDay.id}</div>
+            <div class="chapter-meta">
+              <span>Volume ${entry.studyDay.volume}</span>
+              <span>Chapter ${entry.studyDay.chapter}</span>
+            </div>
+            ${isCompleted ? '<span class="status-check" aria-hidden="true">✓</span>' : ""}
+          `;
+          accessibleStatus = `Study Day ${entry.studyDay.id}, Volume ${entry.studyDay.volume}, Chapter ${entry.studyDay.chapter}${isCompleted ? ", completed" : ""}`;
+        }
+
+        cell.innerHTML = `
+          <div class="date-top">
+            <span class="date-number"><span class="date-month">${new Intl.DateTimeFormat(undefined, { month: "short" }).format(date)} </span>${date.getDate()}</span>
+            ${isToday ? '<span class="today-tag">Today</span>' : ""}
+          </div>
+          ${detailMarkup}
+        `;
+        cell.setAttribute("aria-label", `${formatLongDate(date)}. ${accessibleStatus}.`);
+        if (interactive) cell.addEventListener("click", () => openDateDialog(dateKey));
+        fragment.appendChild(cell);
+      }
+
+      elements.calendarGrid.replaceChildren(fragment);
+    }
+
+    function renderChapterProgress() {
+      const completedSet = new Set(completedDays);
+      elements.chapterProgress.innerHTML = STUDY_PLAN.map((volume) => {
+        const volumeDays = studyDays.filter((day) => day.volume === volume.volume);
+        const volumeCompleted = volumeDays.filter((day) => completedSet.has(day.id)).length;
+
+        const chapterRows = volume.chapters.map((chapter) => {
+          const chapterDays = studyDays.filter((day) => day.volume === volume.volume && day.chapter === chapter.chapter);
+          const completed = chapterDays.filter((day) => completedSet.has(day.id)).length;
+          const percent = (completed / chapter.requiredDays) * 100;
+          return `
+            <div class="chapter-row">
+              <div class="chapter-line">
+                <strong>Chapter ${chapter.chapter}</strong>
+                <span>${completed} / ${chapter.requiredDays}</span>
+              </div>
+              <div class="mini-track" role="progressbar" aria-label="Volume ${volume.volume}, Chapter ${chapter.chapter}" aria-valuemin="0" aria-valuemax="${chapter.requiredDays}" aria-valuenow="${completed}">
+                <div class="mini-fill" style="width: ${percent}%"></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <div class="volume-block">
+            <div class="volume-heading">
+              <span>Volume ${volume.volume}</span>
+              <span class="volume-total">${volumeCompleted} / ${volumeDays.length}</span>
+            </div>
+            ${chapterRows}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openDateDialog(dateKey) {
+      const entry = scheduleByDate.get(dateKey);
+      if (!entry) return;
+      selectedDateKey = dateKey;
+      elements.dialogDate.textContent = formatLongDate(entry.date);
+
+      if (entry.status === "skipped") {
+        elements.dialogTitle.textContent = "Skipped Date";
+        elements.dialogDetails.textContent = "This date does not consume a study day. Undoing it will shift later study days back.";
+        elements.completeAction.hidden = true;
+        elements.skipAction.hidden = true;
+        elements.undoAction.hidden = false;
+        elements.undoAction.textContent = "↩ Undo Skip";
+      } else {
+        const day = entry.studyDay;
+        const isCompleted = completedDays.includes(day.id);
+        elements.dialogTitle.textContent = `Study Day ${day.id}`;
+        elements.dialogDetails.textContent = `Volume ${day.volume} · Chapter ${day.chapter} · Chapter day ${day.chapterDay} of ${day.chapterTotal}`;
+        elements.completeAction.hidden = isCompleted;
+        elements.skipAction.hidden = false;
+        elements.undoAction.hidden = !isCompleted;
+        elements.undoAction.textContent = "↩ Undo Completion";
+      }
+
+      if (typeof elements.dateDialog.showModal === "function") {
+        elements.dateDialog.showModal();
+      } else {
+        elements.dateDialog.setAttribute("open", "");
+      }
+    }
+
+    function closeDialog() {
+      if (elements.dateDialog.open) elements.dateDialog.close();
+      selectedDateKey = null;
+    }
+
+    function renderAll() {
+      elements.startDateInput.value = currentStartDate;
+      elements.accountEmail.textContent = currentUser?.email || "";
+      renderSummary();
+      renderCalendar();
+      renderChapterProgress();
+    }
+
+    function regenerateAndRender() {
+      generateSchedule();
+      renderAll();
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add("show");
+      toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 2600);
+    }
+
+    function changeMonth(offset) {
+      visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1, 12);
+      renderCalendar();
+    }
+
+    function goToToday() {
+      visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1, 12);
+      renderCalendar();
+      const todayCell = elements.calendarGrid.querySelector(`[data-date="${toDateKey(today)}"]`);
+      if (todayCell) todayCell.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function resetSchedule() {
+      if (!window.confirm("Reset the schedule? This will clear all completed days and restore every skipped date.")) return;
+      if (skippedDates.length === 0 && completedDays.length === 0) {
+        showToast("The schedule is already reset.");
+        return;
+      }
+      skippedDates = [];
+      completedDays = [];
+      regenerateAndRender();
+      persistLocalChange();
+      showToast("Schedule reset.");
+    }
+
+    function updateStartDate(newStartDate) {
+      if (!isValidDateKey(newStartDate)) {
+        showToast("Choose a valid start date.");
+        return;
+      }
+      if (newStartDate === currentStartDate) return;
+      if (!window.confirm("Changing the start date will regenerate your calendar schedule.")) {
+        elements.startDateInput.value = currentStartDate;
+        return;
+      }
+
+      currentStartDate = newStartDate;
+      skippedDates = filterApplicableSkippedDates(skippedDates, currentStartDate);
+      const newStart = parseLocalDate(currentStartDate);
+      visibleMonth = new Date(newStart.getFullYear(), newStart.getMonth(), 1, 12);
+      regenerateAndRender();
+      persistLocalChange();
+      showToast("Start date updated. Your schedule was regenerated.");
+    }
+
+    function setSyncStatus(status) {
+      const labels = {
+        synced: "Synced",
+        syncing: "Syncing...",
+        offline: "Offline",
+        error: "Sync Error"
+      };
+      elements.syncStatus.dataset.status = status;
+      elements.syncStatusText.textContent = labels[status] || labels.error;
+    }
+
+    function showLoadingScreen() {
+      elements.loadingScreen.hidden = false;
+      elements.authScreen.hidden = true;
+      elements.appHeader.hidden = true;
+      elements.appMain.hidden = true;
+    }
+
+    function showAuthScreen(message = "", isError = false) {
+      elements.loadingScreen.hidden = true;
+      elements.authScreen.hidden = false;
+      elements.appHeader.hidden = true;
+      elements.appMain.hidden = true;
+      setAuthMessage(message, isError);
+    }
+
+    function showDashboard() {
+      elements.loadingScreen.hidden = true;
+      elements.authScreen.hidden = true;
+      elements.appHeader.hidden = false;
+      elements.appMain.hidden = false;
+    }
+
+    function setAuthMessage(message, isError = false) {
+      elements.authMessage.textContent = message;
+      elements.authMessage.classList.toggle("error", isError);
+    }
+
+    function isSupabaseConfigured() {
+      return /^https:\/\/.+\.supabase\.co\/?$/i.test(SUPABASE_URL) &&
+        SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_") &&
+        SUPABASE_PUBLISHABLE_KEY.length > 30;
+    }
+
+    function friendlyAuthError(error) {
+      const message = String(error?.message || "").toLowerCase();
+      if (message.includes("invalid login credentials")) return "The email or password is incorrect.";
+      if (message.includes("email not confirmed")) return "Please confirm your email before signing in.";
+      if (message.includes("rate limit")) return "Too many attempts. Please wait a moment and try again.";
+      if (!navigator.onLine || message.includes("fetch")) return "You appear to be offline. Connect to the internet and try again.";
+      return "We could not complete that request. Please try again.";
+    }
+
+    async function signIn(email, password) {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    }
+
+    async function signOut() {
+      if (!supabaseClient) return;
+      const { error } = await supabaseClient.auth.signOut();
+      if (error) {
+        console.error("Sign out failed.", error);
+        showToast("Could not sign out. Please try again.");
+        return;
+      }
+      deactivateUser();
+    }
+
+    function normalizeCloudState(row) {
+      const startDate = isValidDateKey(row?.start_date) ? row.start_date : START_DATE;
+      return {
+        startDate,
+        skippedDates: filterApplicableSkippedDates(row?.skipped_dates, startDate),
+        completedDays: normalizeCompletedDays(row?.completed_days),
+        updatedAt: isValidTimestamp(row?.updated_at) ? row.updated_at : new Date(0).toISOString()
+      };
+    }
+
+    function applyCloudState(state) {
+      currentStartDate = state.startDate;
+      skippedDates = state.skippedDates;
+      completedDays = state.completedDays;
+      localUpdatedAt = state.updatedAt;
+      lastKnownCloudUpdatedAt = state.updatedAt;
+      pendingSync = false;
+      stateRevision += 1;
+      saveState();
+      regenerateAndRender();
+    }
+
+    async function createInitialCloudState(userId) {
+      const payload = {
+        user_id: userId,
+        start_date: currentStartDate,
+        skipped_dates: skippedDates,
+        completed_days: completedDays,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseClient
+        .from(TABLE_NAME)
+        .insert(payload)
+        .select("start_date, skipped_dates, completed_days, updated_at")
+        .single();
+
+      if (!error) return data;
+      if (error.code === "23505") {
+        const result = await supabaseClient
+          .from(TABLE_NAME)
+          .select("start_date, skipped_dates, completed_days, updated_at")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (result.error) throw result.error;
+        return result.data;
+      }
+      throw error;
+    }
+
+    async function loadCloudState() {
+      if (!currentUser || !supabaseClient) return;
+      if (!navigator.onLine) {
+        setSyncStatus("offline");
+        return;
+      }
+      if (cloudLoadPromise) return cloudLoadPromise;
+
+      const userId = currentUser.id;
+      const requestRevision = stateRevision;
+      setSyncStatus("syncing");
+
+      cloudLoadPromise = (async () => {
+        try {
+          let { data, error } = await supabaseClient
+            .from(TABLE_NAME)
+            .select("start_date, skipped_dates, completed_days, updated_at")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (error) throw error;
+          if (!currentUser || currentUser.id !== userId) return;
+          if (!data) data = await createInitialCloudState(userId);
+          if (!data || !currentUser || currentUser.id !== userId) return;
+
+          const cloudState = normalizeCloudState(data);
+          const cloudTime = Date.parse(cloudState.updatedAt);
+          const localTime = isValidTimestamp(localUpdatedAt) ? Date.parse(localUpdatedAt) : 0;
+          const changedDuringLoad = stateRevision !== requestRevision;
+          const keepPendingLocal = pendingSync && (changedDuringLoad || localTime > cloudTime);
+
+          lastKnownCloudUpdatedAt = cloudState.updatedAt;
+          cloudHydrated = true;
+          lastCloudRefreshAt = Date.now();
+
+          if (keepPendingLocal) {
+            await syncCloudState();
+          } else {
+            applyCloudState(cloudState);
+            setSyncStatus("synced");
+          }
+        } catch (error) {
+          console.error("Cloud state could not be loaded.", error);
+          setSyncStatus(navigator.onLine ? "error" : "offline");
+        } finally {
+          cloudLoadPromise = null;
+        }
+      })();
+
+      return cloudLoadPromise;
+    }
+
+    async function saveCloudState(snapshot) {
+      const userId = currentUser?.id;
+      if (!userId) throw new Error("No authenticated user.");
+      const { data, error } = await supabaseClient
+        .from(TABLE_NAME)
+        .update({
+          start_date: snapshot.startDate,
+          skipped_dates: snapshot.skippedDates,
+          completed_days: snapshot.completedDays,
+          updated_at: snapshot.updatedAt
+        })
+        .eq("user_id", userId)
+        .select("updated_at")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("The schedule state row was not found.");
+      return data;
+    }
+
+    async function syncCloudState() {
+      if (!currentUser || !supabaseClient) return;
+      if (!navigator.onLine) {
+        pendingSync = true;
+        saveState();
+        setSyncStatus("offline");
+        return;
+      }
+      if (!cloudHydrated) {
+        syncRequested = true;
+        setSyncStatus("syncing");
+        if (!cloudLoadPromise) return loadCloudState();
+        return cloudLoadPromise;
+      }
+      if (!pendingSync && !syncRequested) {
+        setSyncStatus("synced");
+        return;
+      }
+      if (syncPromise) {
+        syncRequested = true;
+        return syncPromise;
+      }
+
+      const userId = currentUser.id;
+      syncPromise = (async () => {
+        try {
+          do {
+            syncRequested = false;
+            if (!pendingSync || !navigator.onLine || currentUser?.id !== userId) break;
+            setSyncStatus("syncing");
+
+            const revision = stateRevision;
+            const snapshot = {
+              startDate: currentStartDate,
+              skippedDates: [...skippedDates],
+              completedDays: [...completedDays],
+              updatedAt: new Date().toISOString()
+            };
+            const saved = await saveCloudState(snapshot);
+            if (currentUser?.id !== userId) return;
+            lastKnownCloudUpdatedAt = saved.updated_at;
+            lastCloudRefreshAt = Date.now();
+
+            if (revision === stateRevision) {
+              pendingSync = false;
+              localUpdatedAt = saved.updated_at;
+              saveState();
+              setSyncStatus("synced");
+            } else {
+              syncRequested = true;
+            }
+          } while (syncRequested && navigator.onLine);
+        } catch (error) {
+          console.error("Cloud synchronization failed.", error);
+          pendingSync = true;
+          saveState();
+          setSyncStatus(navigator.onLine ? "error" : "offline");
+        } finally {
+          syncPromise = null;
+        }
+      })();
+
+      return syncPromise;
+    }
+
+    async function activateUser(user) {
+      if (!user) return;
+      if (activationPromise && currentUser?.id === user.id) return activationPromise;
+
+      const generation = ++authGeneration;
+      currentUser = user;
+      cloudHydrated = false;
+      lastKnownCloudUpdatedAt = null;
+      loadState(user.id);
+      const start = parseLocalDate(currentStartDate);
+      visibleMonth = new Date(start.getFullYear(), start.getMonth(), 1, 12);
+      generateSchedule();
+      showDashboard();
+      renderAll();
+      setSyncStatus(navigator.onLine ? "syncing" : "offline");
+
+      activationPromise = loadCloudState().finally(() => {
+        if (generation === authGeneration) activationPromise = null;
+      });
+      return activationPromise;
+    }
+
+    function deactivateUser() {
+      authGeneration += 1;
+      currentUser = null;
+      currentStartDate = START_DATE;
+      skippedDates = [];
+      completedDays = [];
+      pendingSync = false;
+      localUpdatedAt = null;
+      lastKnownCloudUpdatedAt = null;
+      cloudHydrated = false;
+      cloudLoadPromise = null;
+      syncRequested = false;
+      selectedDateKey = null;
+      elements.authPassword.value = "";
+      showAuthScreen("Signed out successfully.");
+    }
+
+    function handleAuthStateChange(event, session) {
+      window.setTimeout(() => {
+        if (event === "SIGNED_OUT" || !session?.user) {
+          if (event === "SIGNED_OUT") deactivateUser();
+          return;
+        }
+        if (event === "TOKEN_REFRESHED" && currentUser?.id === session.user.id) {
+          currentUser = session.user;
+          return;
+        }
+        if (currentUser?.id !== session.user.id || elements.authScreen.hidden === false) {
+          activateUser(session.user);
+        }
+      }, 0);
+    }
+
+    async function checkSession() {
+      try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        if (data.session?.user) await activateUser(data.session.user);
+        else showAuthScreen();
+      } catch (error) {
+        console.error("Session check failed.", error);
+        showAuthScreen("Could not connect to Supabase. Check your connection and try again.", true);
+      }
+    }
+
+    async function initializeSupabase() {
+      showLoadingScreen();
+      if (!isSupabaseConfigured()) {
+        showAuthScreen("The app configuration is incomplete.", true);
+        elements.authForm.hidden = true;
+        return;
+      }
+      if (!window.supabase?.createClient) {
+        showAuthScreen("Supabase could not load. Check your internet connection and reload.", true);
+        return;
+      }
+
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+      supabaseClient.auth.onAuthStateChange(handleAuthStateChange);
+      await checkSession();
+    }
+
+    async function refreshCloudState() {
+      if (!currentUser || !navigator.onLine) return;
+      if (pendingSync) {
+        // Re-read before uploading an offline/error-queued edit so a newer
+        // change from another device is not overwritten without comparison.
+        await loadCloudState();
+        return;
+      }
+      if (Date.now() - lastCloudRefreshAt < REFRESH_GUARD_MS) return;
+      await loadCloudState();
+    }
+
+    document.getElementById("previousMonth").addEventListener("click", () => changeMonth(-1));
+    document.getElementById("nextMonth").addEventListener("click", () => changeMonth(1));
+    document.getElementById("goToToday").addEventListener("click", goToToday);
+    document.getElementById("resetSchedule").addEventListener("click", resetSchedule);
+    document.getElementById("signOutButton").addEventListener("click", signOut);
+    document.getElementById("cancelAction").addEventListener("click", closeDialog);
+
+    elements.authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!supabaseClient) return;
+      const email = elements.authEmail.value.trim();
+      const password = elements.authPassword.value;
+      elements.authSubmit.disabled = true;
+      elements.authSubmit.textContent = "Signing In...";
+      setAuthMessage("");
+      try {
+        await signIn(email, password);
+      } catch (error) {
+        console.error("Authentication request failed.", error);
+        setAuthMessage(friendlyAuthError(error), true);
+      } finally {
+        elements.authSubmit.disabled = false;
+        elements.authSubmit.textContent = "Sign In";
+      }
+    });
+
+    elements.startDateForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      updateStartDate(elements.startDateInput.value);
+    });
+
+    elements.completeAction.addEventListener("click", () => {
+      const entry = scheduleByDate.get(selectedDateKey);
+      if (entry?.studyDay) toggleCompleted(entry.studyDay.id);
+    });
+
+    elements.skipAction.addEventListener("click", () => {
+      if (selectedDateKey) skipDate(selectedDateKey);
+    });
+
+    elements.undoAction.addEventListener("click", () => {
+      const entry = scheduleByDate.get(selectedDateKey);
+      if (!entry) return;
+      if (entry.status === "skipped") undoSkip(entry.dateKey);
+      else if (entry.studyDay && completedDays.includes(entry.studyDay.id)) toggleCompleted(entry.studyDay.id);
+    });
+
+    elements.dateDialog.addEventListener("click", (event) => {
+      if (event.target === elements.dateDialog) closeDialog();
+    });
+
+    window.addEventListener("online", () => {
+      if (!currentUser) return;
+      setSyncStatus("syncing");
+      // Always refresh first on reconnect. loadCloudState compares updated_at
+      // and will upload the pending local state only when it is newer.
+      loadCloudState();
+    });
+
+    window.addEventListener("offline", () => {
+      if (currentUser) setSyncStatus("offline");
+    });
+
+    window.addEventListener("focus", refreshCloudState);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") refreshCloudState();
+    });
+
+    studyDays = generateStudyDays();
+    generateSchedule();
+    initializeSupabase();
+  </script>
+</body>
+</html>
