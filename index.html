@@ -944,7 +944,7 @@
 
     // This is the default for new accounts. Each signed-in user can change it in Settings.
     const START_DATE = "2026-09-13";
-    const TOTAL_STUDY_DAYS = 51;
+    const TOTAL_STUDY_DAYS = 87;
     const TABLE_NAME = "study_schedule_state";
     const REFRESH_GUARD_MS = 20000;
     const STORAGE_KEYS = {
@@ -959,24 +959,24 @@
       {
         volume: 1,
         chapters: [
-          { chapter: 1, lecture: 1800, requiredDays: 10 },
-          { chapter: 2, lecture: 1030, requiredDays: 6 },
-          { chapter: 3, lecture: 590, requiredDays: 4 },
-          { chapter: 4, lecture: 260, requiredDays: 2 },
-          { chapter: 5, lecture: 540, requiredDays: 3 },
-          { chapter: 6, lecture: 570, requiredDays: 4 }
+          { chapter: 1, lecture: 1800, lectureDays: 10, oldQuestionDays: 5 },
+          { chapter: 2, lecture: 1030, lectureDays: 6, oldQuestionDays: 3 },
+          { chapter: 3, lecture: 590, lectureDays: 4, oldQuestionDays: 3 },
+          { chapter: 4, lecture: 260, lectureDays: 2, oldQuestionDays: 3 },
+          { chapter: 5, lecture: 540, lectureDays: 3, oldQuestionDays: 3 },
+          { chapter: 6, lecture: 570, lectureDays: 4, oldQuestionDays: 3 }
         ]
       },
       {
         volume: 2,
         chapters: [
-          { chapter: 1, lecture: 1260, requiredDays: 7 },
-          { chapter: 2, lecture: 560, requiredDays: 4 },
-          { chapter: 3, lecture: 210, requiredDays: 2 },
-          { chapter: 4, lecture: 120, requiredDays: 1 },
-          { chapter: 5, lecture: 690, requiredDays: 4 },
-          { chapter: 6, lecture: 610, requiredDays: 3 },
-          { chapter: 7, lecture: 124, requiredDays: 1 }
+          { chapter: 1, lecture: 1260, lectureDays: 7, oldQuestionDays: 4 },
+          { chapter: 2, lecture: 560, lectureDays: 4, oldQuestionDays: 2 },
+          { chapter: 3, lecture: 210, lectureDays: 2, oldQuestionDays: 1 },
+          { chapter: 4, lecture: 120, lectureDays: 1, oldQuestionDays: 4 },
+          { chapter: 5, lecture: 690, lectureDays: 4, oldQuestionDays: 2 },
+          { chapter: 6, lecture: 610, lectureDays: 3, oldQuestionDays: 2 },
+          { chapter: 7, lecture: 124, lectureDays: 1, oldQuestionDays: 1 }
         ]
       }
     ];
@@ -1104,13 +1104,33 @@
 
       STUDY_PLAN.forEach((volume) => {
         volume.chapters.forEach((chapter) => {
-          for (let chapterDay = 1; chapterDay <= chapter.requiredDays; chapterDay += 1) {
+          const chapterTotal = chapter.lectureDays + chapter.oldQuestionDays;
+
+          for (let phaseDay = 1; phaseDay <= chapter.lectureDays; phaseDay += 1) {
             generated.push({
               id: dayId,
               volume: volume.volume,
               chapter: chapter.chapter,
-              chapterDay,
-              chapterTotal: chapter.requiredDays,
+              chapterDay: phaseDay,
+              chapterTotal,
+              phase: "Lecture",
+              phaseDay,
+              phaseTotal: chapter.lectureDays,
+              lecture: chapter.lecture
+            });
+            dayId += 1;
+          }
+
+          for (let phaseDay = 1; phaseDay <= chapter.oldQuestionDays; phaseDay += 1) {
+            generated.push({
+              id: dayId,
+              volume: volume.volume,
+              chapter: chapter.chapter,
+              chapterDay: chapter.lectureDays + phaseDay,
+              chapterTotal,
+              phase: "Old Questions",
+              phaseDay,
+              phaseTotal: chapter.oldQuestionDays,
               lecture: chapter.lecture
             });
             dayId += 1;
@@ -1378,10 +1398,11 @@
             <div class="chapter-meta">
               <span>Volume ${entry.studyDay.volume}</span>
               <span>Chapter ${entry.studyDay.chapter}</span>
+              <span>${entry.studyDay.phase}</span>
             </div>
             ${isCompleted ? '<span class="status-check" aria-hidden="true">✓</span>' : ""}
           `;
-          accessibleStatus = `Study Day ${entry.studyDay.id}, Volume ${entry.studyDay.volume}, Chapter ${entry.studyDay.chapter}${isCompleted ? ", completed" : ""}`;
+          accessibleStatus = `Study Day ${entry.studyDay.id}, Volume ${entry.studyDay.volume}, Chapter ${entry.studyDay.chapter}, ${entry.studyDay.phase}${isCompleted ? ", completed" : ""}`;
         }
 
         cell.innerHTML = `
@@ -1408,14 +1429,19 @@
         const chapterRows = volume.chapters.map((chapter) => {
           const chapterDays = studyDays.filter((day) => day.volume === volume.volume && day.chapter === chapter.chapter);
           const completed = chapterDays.filter((day) => completedSet.has(day.id)).length;
-          const percent = (completed / chapter.requiredDays) * 100;
+          const requiredDays = chapter.lectureDays + chapter.oldQuestionDays;
+          const percent = (completed / requiredDays) * 100;
           return `
             <div class="chapter-row">
               <div class="chapter-line">
                 <strong>Chapter ${chapter.chapter}</strong>
-                <span>${completed} / ${chapter.requiredDays}</span>
+                <span>${completed} / ${requiredDays}</span>
               </div>
-              <div class="mini-track" role="progressbar" aria-label="Volume ${volume.volume}, Chapter ${chapter.chapter}" aria-valuemin="0" aria-valuemax="${chapter.requiredDays}" aria-valuenow="${completed}">
+              <div class="chapter-line">
+                <span>Lecture ${chapter.lectureDays} days</span>
+                <span>Old questions ${chapter.oldQuestionDays} days</span>
+              </div>
+              <div class="mini-track" role="progressbar" aria-label="Volume ${volume.volume}, Chapter ${chapter.chapter}" aria-valuemin="0" aria-valuemax="${requiredDays}" aria-valuenow="${completed}">
                 <div class="mini-fill" style="width: ${percent}%"></div>
               </div>
             </div>
@@ -1451,7 +1477,7 @@
         const day = entry.studyDay;
         const isCompleted = completedDays.includes(day.id);
         elements.dialogTitle.textContent = `Study Day ${day.id}`;
-        elements.dialogDetails.textContent = `Volume ${day.volume} · Chapter ${day.chapter} · Chapter day ${day.chapterDay} of ${day.chapterTotal}`;
+        elements.dialogDetails.textContent = `Volume ${day.volume} · Chapter ${day.chapter} · ${day.phase} day ${day.phaseDay} of ${day.phaseTotal}`;
         elements.completeAction.hidden = isCompleted;
         elements.skipAction.hidden = false;
         elements.undoAction.hidden = !isCompleted;
@@ -1581,11 +1607,12 @@
 
     function friendlyAuthError(error) {
       const message = String(error?.message || "").toLowerCase();
-      if (error?.code === "AUTH_TIMEOUT") return "Sign in timed out. Check whether your network can reach Supabase, then try again.";
+      if (error?.code === "AUTH_TIMEOUT") return "Supabase cannot be reached from this network. Try another ISP, mobile data, or a VPN.";
       if (message.includes("invalid login credentials")) return "The email or password is incorrect.";
       if (message.includes("email not confirmed")) return "Please confirm your email before signing in.";
       if (message.includes("rate limit")) return "Too many attempts. Please wait a moment and try again.";
-      if (!navigator.onLine || message.includes("fetch")) return "You appear to be offline. Connect to the internet and try again.";
+      if (!navigator.onLine) return "You appear to be offline. Connect to the internet and try again.";
+      if (message.includes("fetch")) return "Supabase cannot be reached from this network. Try another ISP, mobile data, or a VPN.";
       return "We could not complete that request. Please try again.";
     }
 

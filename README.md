@@ -1,6 +1,6 @@
 # Study Schedule
 
-A private, responsive 51-study-day calendar that synchronizes progress through
+A private, responsive 87-study-day calendar that synchronizes progress through
 an existing Supabase project. The frontend is a single static file built with
 HTML, CSS, vanilla JavaScript, and Supabase JavaScript v2 from a CDN.
 
@@ -78,7 +78,8 @@ cached schedule from appearing for another account on the same browser.
 
 ## Schedule behavior
 
-- The fixed study plan always contains 51 Study Days.
+- The fixed study plan contains 87 Study Days: 51 lecture days and 36 old-question days.
+- Each chapter's old-question days begin immediately after its lecture days.
 - Skipping a calendar date does not consume a Study Day number.
 - Every later Study Day shifts forward when a date is skipped.
 - Completed status is stored by Study Day number, not calendar date.
